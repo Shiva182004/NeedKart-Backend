@@ -1,9 +1,31 @@
-export const auth = (req, res, next) => {
-  // Read cookie
+import type { NextFunction, Request, Response } from "express";
+import { verifyToken } from "../lib/jwt";
 
-  // Verify JWT
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { id: string };
+    }
+  }
+}
 
-  // Attach user to request
+export const auth = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.cookies.token;
 
-  next();
+    if (!token) {
+      throw new Error("No Token Provided");
+    }
+
+    const decodeToken = verifyToken(token) as { id: string };
+
+    req.user = { id: decodeToken.id };
+
+    next();
+  } catch (err) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
 };
