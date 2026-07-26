@@ -5,7 +5,6 @@ import {
   changePassword,
   deleteUser,
   getLoggedInUserProfile,
-  getUser,
   updateUser,
 } from "./user.controller";
 import { validate } from "../../middlewares/validate.middleware";
@@ -16,14 +15,11 @@ const router = express.Router();
 // Get logged-in user's profile
 router.get("/me", auth, asyncHandler(getLoggedInUserProfile));
 
-// Get user by ID
-router.get("/:id", auth, asyncHandler(getUser));
+// Update the logged-in user's profile
+router.patch("/me", auth, validate(updateUserSchema), asyncHandler(updateUser));
 
-// Update user by ID
-router.put("/:id", auth, validate(updateUserSchema), asyncHandler(updateUser));
-
-// Delete user by ID
-router.delete("/:id", auth, asyncHandler(deleteUser));
+// Soft-delete the logged-in user's account
+router.delete("/me", auth, asyncHandler(deleteUser));
 
 // Change password for logged-in user
 router.patch(
@@ -32,8 +28,5 @@ router.patch(
   validate(changePasswordSchema),
   asyncHandler(changePassword),
 );
-
-// Get all users (admin only)
-router.get("/");
 
 export default router;

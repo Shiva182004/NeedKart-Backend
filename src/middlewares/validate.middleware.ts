@@ -1,13 +1,18 @@
 import type { NextFunction, Request, Response } from "express";
-import { verifyToken } from "../lib/jwt";
+import { z } from "zod";
 
-export const validate = (schema: any) => {
+export const validate = (schema: z.ZodType) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body);
 
     if (!result.success) {
-      return res.status(400).json({
-        message: "Validation Failed",
+      return res.status(422).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
       });
     }
 
@@ -15,18 +20,4 @@ export const validate = (schema: any) => {
 
     next();
   };
-};
-
-export const auth = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.token;
-
-  if (!token) {
-    return res.status(404);
-  }
-
-  const payload = verifyToken(token);
-
-  // req.user = payload;
-
-  next();
 };

@@ -38,3 +38,27 @@ enum Role {
   USER
   ADMIN
 }
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  description String
+  image       String
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+  service     Service[]
+}
+
+model Service {
+  id          String    @id @default(uuid())
+  name        String
+  description String
+  price       Int
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  image       Int
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+}

@@ -1,45 +1,69 @@
 import { prisma } from "../../config/db";
-import { loginUserSchema, signupUserSchema } from "./auth.types";
 import { comparePassword, hashPassword } from "../../lib/bcrypt";
 import { generateToken } from "../../lib/jwt";
+import { ApiError } from "../../utils/api-error";
+import type { LoginUserInput, SignupUserInput } from "./auth.types";
 
-export const signup = async (body: unknown) => {
-  const { success, data } = signupUserSchema.safeParse(body);
+const publicUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  profileImage: true,
+  role: true,
+  isVerified: true,
+  created_at: true,
+} as const;
 
-  if (!success) {
-    throw new Error("Invalid Data");
-  }
-
+export const signup = async (data: SignupUserInput) => {
   const existingUser = await prisma.user.findFirst({
     where: {
-      OR: [{ name: data.name }, { email: data.email }, { phone: data.phone }],
+      OR: [
+        { name: { equals: data.name, mode: "insensitive" } },
+        { email: { equals: data.email, mode: "insensitive" } },
+        { phone: data.phone },
+      ],
     },
   });
 
   if (existingUser) {
-    if (existingUser.name === data.name) {
-      throw new Error("Name already exists");
+    if (existingUser.name.toLowerCase() === data.name.toLowerCase()) {
+      throw new ApiError(409, "Name already exists");
     }
 
-    if (existingUser.email === data.email) {
-      throw new Error("Email already exists");
+    if (existingUser.email.toLowerCase() === data.email.toLowerCase()) {
+      throw new ApiError(409, "Email already exists");
     }
 
     if (existingUser.phone === data.phone) {
-      throw new Error("Phone already exists");
+      throw new ApiError(409, "Phone already exists");
     }
   }
 
   const hashedPassword = await hashPassword(data.password);
 
-  const user = await prisma.user.create({
-    data: {
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      password: hashedPassword,
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        password: hashedPassword,
+      },
+      select: publicUserSelect,
+    });
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      throw new ApiError(409, "An account with these details already exists");
+    }
+    throw error;
+  }
 
   const token = await generateToken({
     id: user.id,
@@ -51,27 +75,21 @@ export const signup = async (body: unknown) => {
   };
 };
 
-export const login = async (body: unknown) => {
-  const { success, data } = loginUserSchema.safeParse(body);
-
-  if (!success) {
-    throw new Error("Invalid Data");
-  }
-
-  const user = await prisma.user.findUnique({
+export const login = async (data: LoginUserInput) => {
+  const user = await prisma.user.findFirst({
     where: {
-      email: data.email,
+      email: { equals: data.email, mode: "insensitive" },
     },
   });
 
-  if (!user) {
-    throw new Error("Invalid email or password");
+  if (!user || user.deleted_at) {
+    throw new ApiError(401, "Invalid email or password");
   }
 
   const isMatch = await comparePassword(data.password, user.password);
 
   if (!isMatch) {
-    throw new Error("Invalid email or password");
+    throw new ApiError(401, "Invalid email or password");
   }
 
   const token = await generateToken({
@@ -79,7 +97,16 @@ export const login = async (body: unknown) => {
   });
 
   return {
-    user,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      profileImage: user.profileImage,
+      role: user.role,
+      isVerified: user.isVerified,
+      created_at: user.created_at,
+    },
     token,
   };
 };
