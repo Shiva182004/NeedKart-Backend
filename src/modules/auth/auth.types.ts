@@ -14,6 +14,7 @@ export const signupUserSchema = z
     email: z.string().trim().toLowerCase().email(),
     phone: z.string().regex(/^[0-9]{10}$/, "Phone number must be 10 digits"),
     password: passwordSchema,
+    role: z.enum(["PRODUCER", "CONSUMER"]).default("CONSUMER"),
   })
   .strict();
 

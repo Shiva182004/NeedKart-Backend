@@ -50,6 +50,7 @@ export const signup = async (data: SignupUserInput) => {
         email: data.email,
         phone: data.phone,
         password: hashedPassword,
+        role: data.role,
       },
       select: publicUserSelect,
     });
