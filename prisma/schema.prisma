@@ -21,7 +21,9 @@ model User {
 
   password String
 
-  role Role @default(USER)
+  role Role @default(CONSUMER)
+
+  services Service[]
 
   profileImage String?
 
@@ -35,8 +37,9 @@ model User {
 }
 
 enum Role {
-  USER
   ADMIN
+  PRODUCER
+  CONSUMER
 }
 
 model Category {
@@ -57,7 +60,9 @@ model Service {
   price       Int
   categoryId  String
   category    Category  @relation(fields: [categoryId], references: [id])
-  image       Int
+  providerId  String
+  provider    User      @relation(fields: [providerId], references: [id])
+  image       String
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
   deleted_at  DateTime?
